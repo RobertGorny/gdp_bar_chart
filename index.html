@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>GDP Bar Chart</title>
+		<link rel="stylesheet" href="./styles.css">
+	</head>
+	<body>
+		<script type="module">
+			import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
+			document.addEventListener("DOMContentLoaded", () => {
+
+				const svg = d3.select("#gdp-graph")
+							  .append("svg");
+
+				const w = 850;
+				const h = 450;
+				const padding = 50;
+
+				svg.attr("width", w)
+				   .attr("height", h);
+
+				const url = "https://raw.githubusercontent.com/freeCodeCamp/ProjectReferenceData/master/GDP-data.json";
+
+				const getYear = dateStr => Number(dateStr.slice(0, 4));
+				const getMonthFromDateString = dateStr => Number(dateStr.slice(5, 7));
+				const getQuarter = dateStr => Math.ceil(Number(dateStr.slice(5, 7) / 3));
+
+				const xhr = new XMLHttpRequest();
+				xhr.open('GET', url, true);
+				xhr.onreadystatechange = () => {
+					if (xhr.readyState === 4 && xhr.status >= 200 && xhr.status <= 299) {
+
+						const data = JSON.parse(xhr.response).data;
+
+						const minYear = d3.min(data, d => getYear(d[0]));
+						const maxYear = d3.max(data, d => getYear(d[0]));
+
+						const maxGDP = d3.max(data, d => d[1]);
+
+
+						const xScale = d3.scaleLinear()
+										 .domain([minYear, maxYear])
+										 .range([padding , w])
+
+						const yScale = d3.scaleLinear()
+										 .domain([0, maxGDP])
+										 .range([h - padding, 0])
+
+						const barWidth = w / data.length;
+
+						const bars = svg.selectAll("rect")
+						   .data(data)
+						   .enter()
+						   .append("rect")
+						   .attr("x", d => xScale(getYear(d[0]) + getQuarter(d[0]) / 4))
+						   .attr("y", d => yScale(d[1]))
+						   .attr("width", barWidth)
+						   .attr("height", d => h - padding - yScale(d[1]))
+						   .attr("class", "bar");
+						   
+						const tooltip = d3.select("#gdp-graph")
+										  .append("div")
+										  .attr("class", "tooltip invisible");
+
+						bars.on("mouseover", (event, d) => {
+								const rect = event.target;	
+								const {x, y} = {x: rect.x.baseVal.value, y: rect.y.baseVal.value};
+							 	tooltip.html(`<div>${getYear(d[0])} Q${getQuarter(d[0])}</div> <div>\$${d[1]} Billion</div>`)
+									   .attr("class", "tooltip visible")
+									   .attr("style", `left: ${x + 25}px;`);
+							 })
+							.on("mouseout", (event, d) => {
+								tooltip.attr("class", "tooltip invisible");
+							 });
+
+						const xAxis = d3.axisBottom(xScale)
+										.tickFormat(d3.format(".0f"));
+
+						svg.append("g")
+						   .attr("transform", `translate(0, ${h - padding})`)
+						   .call(xAxis);
+
+						const yAxis = d3.axisLeft(yScale)
+						svg.append("g")
+							.attr("transform", `translate(${padding}, 0)`)
+							.call(yAxis);
+
+						const textCoords = [75, 200];
+						
+						svg.append("text")
+						   .text("Gross Domestic Product")
+						   .attr("transform-origin", `${textCoords[0]} ${textCoords[1]}`)
+						   .attr("transform", `rotate(-90) translate(${textCoords[0]}, ${textCoords[1]})`);
+
+					}
+				}
+				xhr.send();
+			});
+		</script>
+		<div id="project">
+			<div>
+				<h1>United States GDP</h1>
+				<div id="gdp-graph"></div>
+				<div id="source">More Information: http://www.bea.gov/national/pdf/nipaguid.pdf</div>
+			</div>
+		</div>
+	</body>
+</html>
